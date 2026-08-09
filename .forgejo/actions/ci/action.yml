@@ -1,0 +1,9 @@
+name: kcov CI
+description: Run tests and coverage in the kcov image
+runs:
+  using: docker
+  image: docker://docker.io/kcov/kcov:latest-alpine
+  entrypoint: /bin/sh
+  args:
+    - -c
+    - ./coverage.sh examples
