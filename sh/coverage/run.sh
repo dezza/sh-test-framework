@@ -16,7 +16,12 @@ esac
 mkdir -p -- "$output_parent"
 output_parent=$(CDPATH= cd -- "$output_parent" && pwd)
 output_dir=$output_parent/$output_name
-exclude_paths=$output_dir,$framework_dir/sh/coverage
+exclude_paths=$output_dir
+if [ "$project_dir" = "$framework_dir" ]; then
+  exclude_paths=$exclude_paths,$framework_dir/sh/coverage
+else
+  exclude_paths=$exclude_paths,$framework_dir
+fi
 
 case $output_dir in
   "$project_dir"/*) ;;
