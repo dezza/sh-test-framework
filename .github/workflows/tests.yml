@@ -21,46 +21,5 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Checkout submodules
-        run: |
-          git -c url.https://codeberg.org/.insteadOf=ssh://git@codeberg.org/ \
-            submodule update --init --depth=1 --recursive
-
       - name: Run tests
-        shell: bash
-        run: |
-          output=$(mktemp)
-          status=0
-
-          "deps/test-framework/sh/test/run.sh" "deps/test-framework" \
-            "tests" | tee "$output" || status=$?
-
-          stats=$(awk '
-            /^  PASS:/ { passed++ }
-            /^TESTS:/ {
-              gsub(/,/, "")
-              tests = $2
-              assertions = $4
-              skipped = $6
-            }
-            /^COVERAGE:/ { coverage = $2 }
-            END {
-              print passed + 0, tests + 0, assertions + 0, skipped + 0, coverage
-            }
-          ' "$output")
-          set -- $stats
-          passed=$1
-          tests=$2
-          assertions=$3
-          skipped=$4
-          coverage=${5-}
-
-          {
-            printf '## Tests\n\n'
-            printf '**%s/%s assertions passed**\n\n' \
-              "$passed" "$assertions"
-            printf 'Tests: %s · Skipped: %s\n' "$tests" "$skipped"
-            [ -z "$coverage" ] || printf 'Coverage: %s\n' "$coverage"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-          exit "$status"
+        run: make
