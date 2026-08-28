@@ -2,12 +2,12 @@
 set -eu
 
 framework_dir=$1
-test_dir=$2
+shift
 
 if command -v kcov >/dev/null 2>&1 || \
   command -v "${CONTAINER_ENGINE:-podman}" >/dev/null 2>&1
 then
-  exec "$framework_dir/coverage.sh" "$test_dir"
+  exec "$framework_dir/coverage.sh" "$@"
 fi
 
-exec "$framework_dir/run.sh" "$test_dir"
+exec "$framework_dir/run.sh" "$@"

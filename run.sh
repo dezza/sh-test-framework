@@ -3,13 +3,20 @@ set -eu
 
 usage() {
   printf '%s\n' \
-    "Usage: $0 [TEST-DIRECTORY] [TEST-FILE ...]" \
+    "Usage: $0 [--junit FILE] [TEST-DIRECTORY] [TEST-FILE ...]" \
     'Discover and run test-*.sh files.'
 }
 
+TEST_JUNIT=
 case ${1-} in
   -h|--help)
     usage; exit 0 ;;
+  --junit)
+    [ "$#" -ge 2 ] && [ -n "$2" ] || {
+      usage >&2; exit 2
+    }
+    TEST_JUNIT=$2
+    shift 2 ;;
 esac
 
 framework_dir=${TEST_FRAMEWORK_DIR:-}
@@ -23,6 +30,12 @@ test_dir=$(CDPATH= cd -- "$test_dir" && pwd)
 TEST_PROJECT_DIR=${TEST_PROJECT_DIR:-$(CDPATH= cd -- "$test_dir/.." && pwd)}
 TEST_FRAMEWORK_DIR=$framework_dir
 export TEST_PROJECT_DIR TEST_FRAMEWORK_DIR
+
+if [ -n "$TEST_JUNIT" ]; then
+  TEST_JUNIT_DATA=$(mktemp "${TMPDIR:-/tmp}/test-framework-junit.XXXXXX")
+  export TEST_JUNIT TEST_JUNIT_DATA
+  trap 'rm -f -- "$TEST_JUNIT_DATA"' 0
+fi
 
 . "$framework_dir/testlib.sh"
 

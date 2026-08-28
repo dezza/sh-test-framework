@@ -45,6 +45,34 @@ _test_record_failure() {
   printf '.\n' >>"$TEST_CASE_FAILURES"
 }
 
+_test_junit_case() {
+  [ -z "${TEST_JUNIT_DATA-}" ] || \
+    printf 'C\t%s\t%s\n' "$TEST_COUNT" "$1" >>"$TEST_JUNIT_DATA"
+}
+
+_test_junit_assertion() {
+  [ -z "${TEST_JUNIT_DATA-}" ] || \
+    printf 'A\t%s\t%s\t%s\n' \
+      "$TEST_COUNT" "$1" "$2" >>"$TEST_JUNIT_DATA"
+}
+
+_test_junit_skip() {
+  [ -z "${TEST_JUNIT_DATA-}" ] || \
+    printf 'S\t%s\t%s\n' "$TEST_COUNT" "$1" >>"$TEST_JUNIT_DATA"
+}
+
+_test_junit_error() {
+  [ -z "${TEST_JUNIT_DATA-}" ] || \
+    printf 'E\t%s\t%s\n' "$TEST_COUNT" "$1" >>"$TEST_JUNIT_DATA"
+}
+
+_test_junit_finish() {
+  [ -z "${TEST_JUNIT-}" ] && return 0
+
+  awk -F '\t' -f "$TEST_FRAMEWORK_DIR/sh/test/junit.awk" \
+    "$TEST_JUNIT_DATA" >"$TEST_JUNIT"
+}
+
 assert_equal() {
   description=$1
   actual=$2
@@ -53,10 +81,12 @@ assert_equal() {
   _test_record_assertion
 
   if [ "$actual" = "$expected" ]; then
+    _test_junit_assertion pass "$description"
     printf '  %s: %s\n' "$(_test_pass)" "$description"
     return 0
   fi
 
+  _test_junit_assertion fail "$description"
   printf '  %s: %s\n' "$(_test_fail)" "$description"
   printf '    expected: %s\n' "$expected"
   printf '    actual:   %s\n' "$actual"
@@ -77,10 +107,12 @@ assert_status() {
   set -e
 
   if [ "$actual" -eq "$expected" ]; then
+    _test_junit_assertion pass "$description"
     printf '  %s: %s\n' "$(_test_pass)" "$description"
     return 0
   fi
 
+  _test_junit_assertion fail "$description"
   printf '  %s: %s\n' "$(_test_fail)" "$description"
   printf '    expected status: %s\n' "$expected"
   printf '    actual status:   %s\n' "$actual"
@@ -106,10 +138,12 @@ assert_failure() {
   set -e
 
   if [ "$actual" -ne 0 ]; then
+    _test_junit_assertion pass "$description"
     printf '  %s: %s\n' "$(_test_pass)" "$description"
     return 0
   fi
 
+  _test_junit_assertion fail "$description"
   printf '  %s: %s\n' "$(_test_fail)" "$description"
   printf '    expected nonzero status\n'
   printf '    actual status: 0\n'
@@ -164,6 +198,7 @@ test_case() {
   export TEST_TMPDIR TEST_CASE_ASSERTIONS TEST_CASE_FAILURES \
     TEST_CASE_SKIP_REASON
 
+  _test_junit_case "$description"
   printf '[%s] %s\n' "$TEST_COUNT" "$description"
 
   set +e
@@ -198,11 +233,13 @@ test_case() {
       else
         reason=skipped
       fi
+      _test_junit_skip "$reason"
       printf '  %s: %s\n' "$(_test_skip_label)" "$reason"
       ;;
     *)
       if [ "$failures" -eq 0 ]; then
         TEST_FAILED=$((TEST_FAILED + 1))
+        _test_junit_error "$status"
       fi
       printf '  %s: case exited with status %s\n' "$(_test_fail)" "$status"
       ;;
@@ -214,13 +251,17 @@ test_case() {
 test_finish() {
   printf '\n'
 
+  status=0
   if [ "$TEST_FAILED" -ne 0 ]; then
     printf 'TESTS: %s, ASSERTIONS: %s, SKIPPED: %s, %s: %s\n' \
       "$TEST_COUNT" "$TEST_ASSERTIONS" "$TEST_SKIPPED" \
       "$(_test_fail)" "$TEST_FAILED"
-    return 1
+    status=1
+  else
+    printf 'TESTS: %s, ASSERTIONS: %s, SKIPPED: %s, %s\n' \
+      "$TEST_COUNT" "$TEST_ASSERTIONS" "$TEST_SKIPPED" "$(_test_pass)"
   fi
 
-  printf 'TESTS: %s, ASSERTIONS: %s, SKIPPED: %s, %s\n' \
-    "$TEST_COUNT" "$TEST_ASSERTIONS" "$TEST_SKIPPED" "$(_test_pass)"
+  _test_junit_finish || return 1
+  return "$status"
 }

@@ -3,7 +3,7 @@ set -eu
 
 usage() {
   cat <<-EOF_USAGE
-	Usage: $0 [TEST-DIRECTORY] [TEST-FILE ...]
+	Usage: $0 [--junit FILE] [TEST-DIRECTORY] [TEST-FILE ...]
 
 	Run the test framework under kcov. Coverage output is written to coverage/.
 	Set KCOV_OUTPUT_DIR to use another directory.
