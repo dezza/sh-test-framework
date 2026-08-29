@@ -2,6 +2,7 @@
 set -eu
 
 test_framework=$1
+source=${2-}
 super=$(git -C "$test_framework" rev-parse --show-superproject-working-tree)
 submodule=$(git -C "$test_framework" rev-parse --show-toplevel)
 
@@ -24,5 +25,10 @@ if [ -n "$(git -C "$submodule" status --porcelain)" ]; then
   git -C "$submodule" clean -fd --quiet
 fi
 
+if [ -n "$source" ]; then
+  git -C "$super" -c protocol.file.allow=always \
+    submodule set-url -- "$relative" "$source"
+fi
+
 git -C "$super" -c protocol.file.allow=always \
-  submodule update --remote --force --checkout -- "$relative"
+  submodule update --init --remote --force --checkout -- "$relative"

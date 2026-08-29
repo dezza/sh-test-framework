@@ -15,7 +15,13 @@ skip_without_reason() {
   return 125
 }
 
-TEST_KEEP_TMP=1
+tmpdir_failure() {
+  touch "$TFW_TMPDIR/not-dir"
+  test_tmpdir not-dir/child
+}
+
+TFW_TMP=1
 test_case 'failed assertions' fail_assertions
 test_case 'unexpected failure' unexpected_failure
 test_case 'skip without reason' skip_without_reason
+test_case 'temporary directory failure' tmpdir_failure

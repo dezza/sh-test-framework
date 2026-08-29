@@ -6,4 +6,4 @@ runs:
   entrypoint: /bin/sh
   args:
     - -c
-    - ./coverage.sh examples
+    - ./src/coverage.sh examples

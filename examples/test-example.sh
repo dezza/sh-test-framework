@@ -1,11 +1,11 @@
 #!/bin/sh
 
 sample_setup() {
-  mkdir -p "$TEST_TMPDIR/setup"
+  mkdir -p "$TFW_TMPDIR/setup"
 }
 
 sample_teardown() {
-  rm -rf "$TEST_TMPDIR/setup"
+  rm -rf "$TFW_TMPDIR/setup"
 }
 
 sample_assertions() {
@@ -18,20 +18,21 @@ sample_assertions() {
 sample_tmpdir() {
   path=$(test_tmpdir data)
   touch "$path/file"
-  assert_success 'temporary directory created' test -f "$path/file"
-  assert_equal 'temporary path returned' "$path" "$TEST_TMPDIR/data"
+
+  assert_success 'temporary directory created' [ -f "$path/file" ]
+  assert_equal 'temporary path returned' "$path" "$TFW_TMPDIR/data"
 }
 
 sample_skip() {
   test_skip 'skip example'
 }
 
-TEST_SETUP=sample_setup
-TEST_TEARDOWN=sample_teardown
+TFW_SETUP=sample_setup
+TFW_TEARDOWN=sample_teardown
 
 test_case 'assertions' sample_assertions
 test_case 'temporary directory' sample_tmpdir
 test_case 'skipped test' sample_skip
 
-TEST_SETUP=
-TEST_TEARDOWN=
+TFW_SETUP=
+TFW_TEARDOWN=

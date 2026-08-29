@@ -1,6 +1,6 @@
-# Shell test framework
+# Introduction
 
-Small POSIX `sh` test framework with hooks, skips, and kcov coverage.
+Small POSIX `sh` test framework with hooks, skips, JUnit output, and kcov coverage.
 
 Requires: `make` (*GNU*), `POSIX sh`
 
@@ -13,14 +13,20 @@ Install it as `deps/test-framework`; see [INSTALL.md](INSTALL.md).
 Include its Makefile, place tests in `tests/test-*.sh`, then run:
 
 ```sh
-make test-framework-test
-make test-framework-coverage
-make test-framework-update
+make tfw-test
+make tfw-cov
+make tfw-update
 ```
+
+Set `TFW_MODULE` to a module URL or local path when updating
+from a source other than the submodule's configured URL.
 
 Coverage uses `kcov` via a container image, if not installed on the host.
 
-Reports are written to `output/coverage` and cleaned before every run. The test target uses coverage when kcov or the configured container engine is available.
+Coverage uses a temporary directory and cleans it after each run. Set
+`TFW_COV` to write reports to a project directory, or `TFW_COV_KEEP=1`
+to retain the automatic temporary report and print its path. The test target
+uses coverage when kcov or the configured container engine is available.
 
 ## Write tests
 
@@ -48,26 +54,36 @@ Available functions:
 
 Optional environment variables:
 
-- `TEST_SETUP` and `TEST_TEARDOWN`: hook function names
-- `TEST_KEEP_TMP=1`: retain temporary files after an unexpected case failure
+- `TFW_DIR`: framework location when included from a parent Makefile
+- `TFW_TESTS`: test directory; default `tests`
+- `TFW_SETUP` and `TFW_TEARDOWN`: hook function names
+- `TFW_TMP=1`: retain temporary files after an unexpected case failure
 - `NO_COLOR=1`: disable color
-- `KCOV_OUTPUT_DIR`: coverage output directory
-- `KCOV_CONTAINER=1`: force container coverage even when kcov is installed
-- `CONTAINER_ENGINE`: container command; default `podman`
-- `KCOV_IMAGE`: kcov image
-- `CONTAINER_RUN_ARGS`: extra container arguments
+- `TFW_COV`: coverage output directory
+- `TFW_COV_KEEP=1`: retain automatic temporary coverage output
+- `TFW_CONT=1`: force container coverage even when kcov is installed
+- `TFW_CONT_CMD`: container command; default `podman`
+- `TFW_CONT_IMG`: kcov image
+- `TFW_CONT_ARGS`: extra container arguments
+- `TFW_MODULE`: module URL or local path for `tfw-update`
+
+`TEST_TMPDIR` remains exported as a compatibility alias for `TFW_TMPDIR`.
 
 ## Self-testing
 
 ```sh
-make                     # Local CI: tests and coverage
+make                     # Local CI: tests; coverage when available
 make ci                  # Explicit local CI target
 
-./run.sh examples        # Example Tests only
-./coverage.sh examples   # Coverage; local kcov or container
+./src/run.sh examples        # Example tests only
+./src/run.sh --junit junit.xml examples
+./src/coverage.sh examples   # Coverage; local kcov or container
 ```
 
 Forgejo runs the same CI through `.forgejo/workflows/ci.yml`.
+
+For converting an existing parent Makefile, see
+[migration_llm.md](migration_llm.md).
 
 ## Limits
 
@@ -80,6 +96,14 @@ There is no
 * filtering
 * mocking
 * output capture
-* machine-readable test report
 
 kcov measures executed lines, not test quality.
+
+# Troubleshooting
+
+When commands cannot be mocked extend kcov container with tools.
+
+```dockerfile
+FROM docker.io/kcov/kcov:latest-alpine
+RUN apk add --no-cache foo bar baz # additions
+```

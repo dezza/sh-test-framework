@@ -1,11 +1,20 @@
 # Makefile: GNU Make; target: Linux
 
-TEST_FRAMEWORK ?= deps/test-framework
-TEST_FRAMEWORK_TEST_DIR ?= tests
-KCOV_OUTPUT_DIR ?= output/coverage
-CONTAINER_ENGINE ?= podman
-CONTAINER_RUN_ARGS ?=
-KCOV_IMAGE ?= docker.io/kcov/kcov:latest-alpine
+# Parent-repository overrides:
+# TFW_TESTS: test directory, default tests/.
+# TFW_COV: coverage output directory.
+# TFW_COV_KEEP: retain coverage tmp output.
+# TFW_CONT_CMD: override container binary (podman or docker)
+# TFW_CONT_ARGS: extra container arguments.
+# TFW_CONT_IMG: coverage container image.
+# TFW_MODULE: module URL or local path for updates.
+
+TFW_DIR ?= $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+TFW_TESTS ?= tests
+TFW_MODULE ?=
+TFW_CONT_CMD ?= $(shell command -v podman 2>/dev/null || command -v docker 2>/dev/null)
+
+export TFW_DIR TFW_CONT_CMD TFW_CONT_ARGS TFW_CONT_IMG TFW_COV TFW_COV_KEEP
 
 ifeq ($(abspath $(lastword $(MAKEFILE_LIST))),$(abspath $(CURDIR)/Makefile))
 .DEFAULT_GOAL := ci
@@ -13,39 +22,38 @@ ifeq ($(abspath $(lastword $(MAKEFILE_LIST))),$(abspath $(CURDIR)/Makefile))
 .PHONY: ci
 
 ci:
-	CONTAINER_ENGINE="$(CONTAINER_ENGINE)" \
-		CONTAINER_RUN_ARGS="$(CONTAINER_RUN_ARGS)" \
-		KCOV_IMAGE="$(KCOV_IMAGE)" \
-		KCOV_OUTPUT_DIR="$(KCOV_OUTPUT_DIR)" \
-		./sh/container/run.sh /workspace/coverage.sh examples
-
+	@if command -v kcov >/dev/null 2>&1 || \
+		command -v "$(TFW_CONT_CMD)" >/dev/null 2>&1; then \
+		./src/coverage.sh examples; \
+	else \
+		printf '%s\n' 'WARNING: kcov and container engine unavailable; skipping coverage.' >&2; \
+		./src/run.sh examples; \
+	fi
 else
-TEST_FRAMEWORK_DEFAULT_GOAL := $(.DEFAULT_GOAL)
+TFW_DEFAULT_GOAL := $(.DEFAULT_GOAL)
 
-.PHONY: test-framework-test test-framework-coverage \
-	test-framework-check-submodule test-framework-update
+.PHONY: test coverage update tfw-test tfw-cov tfw-update
 
-test-framework-test test-framework-coverage: export CONTAINER_ENGINE := \
-	$(CONTAINER_ENGINE)
-test-framework-test test-framework-coverage: export CONTAINER_RUN_ARGS := \
-	$(CONTAINER_RUN_ARGS)
-test-framework-test test-framework-coverage: export KCOV_IMAGE := \
-	$(KCOV_IMAGE)
-test-framework-test test-framework-coverage: export KCOV_OUTPUT_DIR := \
-	$(KCOV_OUTPUT_DIR)
+test: tfw-test
+coverage: tfw-cov
+update: tfw-update
 
-test-framework-test:
-	"$(TEST_FRAMEWORK)/sh/test/run.sh" "$(TEST_FRAMEWORK)" \
-		"$(TEST_FRAMEWORK_TEST_DIR)"
+tfw-test:
+	@if command -v kcov >/dev/null 2>&1 || \
+		command -v "$(TFW_CONT_CMD)" >/dev/null 2>&1; then \
+		"$(TFW_DIR)/src/coverage.sh" "$(TFW_TESTS)"; \
+	else \
+		printf '%s\n' 'WARNING: kcov and container engine unavailable; skipping coverage.' >&2; \
+		"$(TFW_DIR)/src/run.sh" "$(TFW_TESTS)"; \
+	fi
 
-test-framework-coverage:
-	"$(TEST_FRAMEWORK)/coverage.sh" "$(TEST_FRAMEWORK_TEST_DIR)"
+tfw-cov:
+	"$(TFW_DIR)/src/coverage.sh" "$(TFW_TESTS)"
 
-test-framework-check-submodule:
-	@"$(TEST_FRAMEWORK)/sh/submodule/check.sh" "$(TEST_FRAMEWORK)"
+tfw-update:
+	@sh "$(TFW_DIR)/src/check-module.sh" "$(TFW_DIR)"
+	@sh "$(TFW_DIR)/src/update-module.sh" \
+		"$(TFW_DIR)" "$(TFW_MODULE)"
 
-test-framework-update: test-framework-check-submodule
-	@"$(TEST_FRAMEWORK)/sh/submodule/update.sh" "$(TEST_FRAMEWORK)"
-
-.DEFAULT_GOAL := $(TEST_FRAMEWORK_DEFAULT_GOAL)
+.DEFAULT_GOAL := $(TFW_DEFAULT_GOAL)
 endif
