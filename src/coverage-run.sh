@@ -77,6 +77,7 @@ main_dir=$output_dir/main
 kcov \
   --bash-method=DEBUG \
   --bash-parser=/bin/bash \
+  --bash-parse-files-in-dir="$project_dir" \
   --include-path="$project_dir" \
   --exclude-path="$exclude_paths" \
   "$main_dir" "$framework_dir/run.sh" "$@"
