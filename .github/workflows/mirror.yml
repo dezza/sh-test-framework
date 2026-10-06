@@ -16,6 +16,8 @@ jobs:
         with:
           private-key: ${{ secrets.MIRROR_PRIVATE_KEY }}
           client-id: ${{ vars.MIRROR_CLIENT_ID }}
+          permission-contents: write
+          permission-workflows: write
 
       - name: Mirror source refs
         env:
